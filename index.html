@@ -867,6 +867,8 @@ function drawVines(sy,t,dt,wind){
 /* ---------- things that follow scroll position ---------- */
 function layers(y){
   var h=Math.max(1,document.documentElement.scrollHeight-innerHeight),p=Math.min(1,y/h),i,o;
+  /* Lanterns travel gently upward with the page instead of remaining pinned to the viewport. */
+  ls.style.transform='translate3d(0,'+(-y*.22).toFixed(1)+'px,0)';
   l1.style.transform='translate3d(0,'+(-y*.03).toFixed(1)+'px,0)';
   l2.style.transform='translate3d(0,'+(-y*.1).toFixed(1)+'px,0)';l2.style.opacity=Math.max(0,1-y/(H*.6)).toFixed(2);
   l3.style.transform='translate3d(0,'+(-y*.14).toFixed(1)+'px,0)';
@@ -878,7 +880,7 @@ function layers(y){
 
 var last=0,lastRaf=0,lastY=scrollY,sy=scrollY,vS=0,rafId=0,running=false,lastPaint=0;
 var sampleFrames=0,slowFrames=0,goodFrames=0,lastQualityCheck=0;
-function frameBudget(){return quality==='low'?33:0}
+function frameBudget(){return quality==='low'?40:(quality==='balanced'?24:0)}
 function updateQuality(now,rawDt){
   sampleFrames++;if(rawDt>24)slowFrames++;if(rawDt<19)goodFrames++;
   if(now-lastQualityCheck<3000)return;
@@ -898,7 +900,8 @@ function loop(now){
   var dt=Math.min(.05,Math.max(.001,rawDt/1000));last=now;lastPaint=now;
   var y=scrollY;vS+=((y-lastY)/dt-vS)*(1-Math.exp(-dt/.11));lastY=y;
   sy+=(y-sy)*(1-Math.exp(-dt/.08));if(Math.abs(y-sy)<.05)sy=y;
-  if(sy!==drawn){drawn=sy;layers(sy)}
+  var scrolled=sy!==drawn;
+  if(scrolled){drawn=sy;layers(sy)}
   var t=(now-t0)/1000,wind=cl(vS,-2800,2800)*.0055,i,o,th,q;
   for(i=0;i<L.length;i++){
     o=L[i];if(lp&&i%2===0)continue;
@@ -909,7 +912,8 @@ function loop(now){
     q=Math.round(o.a*80)*1000+Math.round((o.b-o.a)*80);
     if(q!==o.q){o.q=q;o.el.style.transform='rotate('+o.a.toFixed(2)+'deg)';o.fn.style.transform='rotate('+((o.b-o.a)*.38).toFixed(2)+'deg) scale('+o.s+')'}
   }
-  drawVines(sy,t,dt,wind);
+  /* Vine paths are tied to scroll, so avoid rebuilding SVG paths on idle frames. */
+  if(scrolled)drawVines(sy,t,dt,wind);
 }
 function startLoop(){if(running||document.hidden)return;running=true;last=0;lastRaf=0;lastPaint=0;lastY=scrollY;rafId=requestAnimationFrame(loop)}
 function stopLoop(){running=false;if(rafId)cancelAnimationFrame(rafId);rafId=0}
